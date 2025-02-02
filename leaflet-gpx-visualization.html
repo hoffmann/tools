@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Leaflet GPX Visualizer</title>
+  <!-- Leaflet CSS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    crossorigin=""
+  />
+  <style>
+    /* Full-page map */
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+    /* Drop zone styling */
+    #drop_zone {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.9);
+      border: 2px dashed #888;
+      padding: 15px;
+      font-family: sans-serif;
+      cursor: pointer;
+      user-select: none;
+    }
+    #drop_zone.hover {
+      background: rgba(240, 240, 240, 0.9);
+      border-color: #555;
+    }
+    /* Hide the file input */
+    #file_input {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="drop_zone">Drop GPX</div>
+  <input type="file" id="file_input" accept=".gpx">
+  <div id="map"></div>
+
+  <!-- Leaflet JavaScript -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    crossorigin=""
+  ></script>
+  <!-- leaflet-gpx plugin from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.5.1/gpx.min.js"></script>
+
+  <script>
+    // Initialize the Leaflet map.
+    const map = L.map('map').setView([0, 0], 2);
+
+    // Add OpenStreetMap tile layer.
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Keep a reference to the current GPX layer, if any.
+    let gpxLayer = null;
+
+    // Setup the drop zone and file input elements.
+    const dropZone = document.getElementById('drop_zone');
+    const fileInput = document.getElementById('file_input');
+
+    // Prevent default behaviors for drag events on the document.
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      document.addEventListener(eventName, e => {
+        e.preventDefault();
+        e.stopPropagation();
+      }, false);
+    });
+
+    // Highlight drop zone when file is dragged over it.
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, () => dropZone.classList.add('hover'), false);
+    });
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, () => dropZone.classList.remove('hover'), false);
+    });
+
+    // Handle dropped files.
+    dropZone.addEventListener('drop', (e) => {
+      const files = e.dataTransfer.files;
+      if (files.length) {
+        const file = files[0];
+        if (file.name.toLowerCase().endsWith('.gpx')) {
+          loadGPX(file);
+        } else {
+          alert('Please drop a valid GPX file.');
+        }
+      }
+    });
+
+    // Open file dialog when the drop zone is clicked.
+    dropZone.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    // Handle file selection from the file dialog.
+    fileInput.addEventListener('change', (e) => {
+      const files = e.target.files;
+      if (files.length) {
+        const file = files[0];
+        if (file.name.toLowerCase().endsWith('.gpx')) {
+          loadGPX(file);
+        } else {
+          alert('Please select a valid GPX file.');
+        }
+      }
+      // Reset the file input so that the same file can be selected again if needed.
+      fileInput.value = '';
+    });
+
+    // Function to load the GPX file using leaflet-gpx.
+    function loadGPX(file) {
+      // Remove any existing GPX layer.
+      if (gpxLayer) {
+        map.removeLayer(gpxLayer);
+      }
+
+      // Create a URL for the dropped or selected file.
+      const fileURL = URL.createObjectURL(file);
+
+      // Load and parse the GPX file.
+      gpxLayer = new L.GPX(fileURL, {
+        async: true,
+        marker_options: {
+          startIconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+          endIconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png'
+        }
+      }).on('loaded', function(e) {
+        // Fit the map bounds to the GPX track.
+        map.fitBounds(e.target.getBounds());
+      }).addTo(map);
+    }
+  </script>
+</body>
+</html>
