@@ -22,7 +22,7 @@
     /* Drop zone styling */
     #drop_zone {
       position: absolute;
-      top: 10px;
+      top: 60px;
       right: 10px;
       z-index: 1000;
       background: rgba(255, 255, 255, 0.9);
@@ -60,10 +60,32 @@
     const map = L.map('map').setView([0, 0], 2);
 
     // Add OpenStreetMap tile layer.
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    var osm_layer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18,
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
+
+    // add mapbox tile layer
+    var mapbox_layer = L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
+      maxZoom: 18,
+      id: 'mapbox/outdoors-v11', 
+      accessToken: 'pk.eyJ1IjoicGV0ZXJob2ZmbWFubiIsImEiOiJjbTZuZTMwYmQwcDNyMmxyNTh2Y2s3eDFmIn0.TogLeDQYyaf7ovW48nlQ4Q'
+    }).addTo(map);
+    
+    // add mapbox tile layer
+    var satellite_layer = L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
+      maxZoom: 18,
+      id: 'mapbox/satellite-v11', 
+      accessToken: 'pk.eyJ1IjoicGV0ZXJob2ZmbWFubiIsImEiOiJjbTZuZTMwYmQwcDNyMmxyNTh2Y2s3eDFmIn0.TogLeDQYyaf7ovW48nlQ4Q'
+    }).addTo(map);
+
+    var baseMaps = {
+    "OpenStreetMap": osm_layer,
+    "Mapbox.Outdoor": mapbox_layer,
+    "Mapbox.Satellite": satellite_layer
+    };
+
+    var layerControl = L.control.layers(baseMaps).addTo(map);
 
     // Keep a reference to the current GPX layer, if any.
     let gpxLayer = null;
