@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Leaflet GPX Visualizer</title>
+  <!-- Leaflet CSS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    crossorigin=""
+  />
+  <style>
+    /* Full-page map */
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+    /* Drop zone styling */
+    #drop_zone {
+      position: absolute;
+      top: 60px;
+      right: 10px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.9);
+      border: 2px dashed #888;
+      padding: 15px;
+      font-family: sans-serif;
+      cursor: pointer;
+      user-select: none;
+    }
+    #drop_zone.hover {
+      background: rgba(240, 240, 240, 0.9);
+      border-color: #555;
+    }
+    /* Hide the file input */
+    #file_input {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="drop_zone">Drop GPX</div>
+  <input type="file" id="file_input" accept=".geojson">
+  <div id="map"></div>
+
+  <!-- Leaflet JavaScript -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    crossorigin=""
+  ></script>
+
+  <script>
+    // Initialize the Leaflet map.
+    const map = L.map('map').setView([0, 0], 2);
+
+    // Add OpenStreetMap tile layer.
+    var osm_layer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+    
+    // add mapbox tile layer
+    var satellite_layer = L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
+      maxZoom: 18,
+      id: 'mapbox/satellite-v9', 
+      accessToken: 'pk.eyJ1IjoicGV0ZXJob2ZmbWFubiIsImEiOiJjbTZuZTMwYmQwcDNyMmxyNTh2Y2s3eDFmIn0.TogLeDQYyaf7ovW48nlQ4Q'
+    }).addTo(map);
+
+    // add mapbox tile layer
+    var mapbox_layer = L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
+      maxZoom: 18,
+      id: 'mapbox/outdoors-v11', 
+      accessToken: 'pk.eyJ1IjoicGV0ZXJob2ZmbWFubiIsImEiOiJjbTZuZTMwYmQwcDNyMmxyNTh2Y2s3eDFmIn0.TogLeDQYyaf7ovW48nlQ4Q'
+    }).addTo(map);
+    
+
+    var baseMaps = {
+    "OpenStreetMap": osm_layer,
+    "Mapbox.Outdoor": mapbox_layer,
+    "Mapbox.Satellite": satellite_layer
+    };
+
+    var layerControl = L.control.layers(baseMaps).addTo(map);
+
+    // Reference to the current GeoJSON layer, if any
+    let geojsonLayer = null;
+
+    // Setup the drop zone and file input elements
+    const dropZone = document.getElementById('drop_zone');
+    const fileInput = document.getElementById('file_input');
+
+    // Prevent default drag behaviors
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      document.addEventListener(eventName, e => {
+        e.preventDefault();
+        e.stopPropagation();
+      }, false);
+    });
+
+    // Highlight drop zone when a file is dragged over it
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, () => dropZone.classList.add('hover'), false);
+    });
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, () => dropZone.classList.remove('hover'), false);
+    });
+
+    // Open file dialog when the drop zone is clicked
+    dropZone.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    // Handle file drop event
+    dropZone.addEventListener('drop', (e) => {
+      const files = e.dataTransfer.files;
+      if (files.length) {
+        const file = files[0];
+        if (file.name.toLowerCase().endsWith('.geojson')) {
+          loadGeoJSON(file);
+        } else {
+          alert('Please drop a valid GeoJSON file.');
+        }
+      }
+    });
+
+    // Handle file selection via the file dialog
+    fileInput.addEventListener('change', (e) => {
+      const files = e.target.files;
+      if (files.length) {
+        const file = files[0];
+        if (file.name.toLowerCase().endsWith('.geojson')) {
+          loadGeoJSON(file);
+        } else {
+          alert('Please select a valid GeoJSON file.');
+        }
+      }
+      // Reset the input so the same file can be reselected if needed
+      fileInput.value = '';
+    });
+
+    // Function to load and display the GeoJSON file
+    function loadGeoJSON(file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        let geojsonData;
+        try {
+          geojsonData = JSON.parse(e.target.result);
+        } catch (err) {
+          alert('Error parsing GeoJSON file.');
+          return;
+        }
+        // Remove any existing GeoJSON layer
+        if (geojsonLayer) {
+          map.removeLayer(geojsonLayer);
+        }
+        // Create and add a new GeoJSON layer to the map
+        geojsonLayer = L.geoJSON(geojsonData, {
+          style: function(feature) {
+            return { color: '#007ACC', weight: 2 };
+          },
+          onEachFeature: function(feature, layer) {
+            if (feature.properties && feature.properties.name) {
+              layer.bindPopup(feature.properties.name);
+            }
+          }
+        }).addTo(map);
+        // Adjust the map view to fit the bounds of the GeoJSON layer
+        if (geojsonLayer.getBounds && geojsonLayer.getBounds().isValid()) {
+          map.fitBounds(geojsonLayer.getBounds());
+        }
+      };
+      reader.readAsText(file);
+    }
+  </script>
+</body>
+</html>
+
