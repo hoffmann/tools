@@ -163,10 +163,8 @@
             return { color: '#007ACC', weight: 2 };
           },
           onEachFeature: function(feature, layer) {
-            if (feature.properties && feature.properties.name) {
-              layer.bindPopup(feature.properties.name);
-            }
-          }
+          layer.bindPopup('<pre>'+JSON.stringify(feature.properties,null,' ').replace(/[\{\}"]/g,'')+'</pre>');
+        }
         }).addTo(map);
         // Adjust the map view to fit the bounds of the GeoJSON layer
         if (geojsonLayer.getBounds && geojsonLayer.getBounds().isValid()) {
