@@ -135,7 +135,8 @@
       if (files.length) {
         const file = files[0];
         if (file.name.toLowerCase().endsWith('.gpx')) {
-          loadGPX(file);
+          const fileURL = URL.createObjectURL(file);
+          loadGPX(fileURL);
         } else {
           alert('Please select a valid GPX file.');
         }
@@ -152,7 +153,6 @@
       }
 
       // Create a URL for the dropped or selected file.
-      const fileURL = URL.createObjectURL(file);
 
       // Load and parse the GPX file.
       gpxLayer = new L.GPX(fileURL, {
@@ -168,31 +168,12 @@
       }).addTo(map);
     }
 
-    // Function to load a GPX file from a URL.
-    function loadGPXFromURL(url) {
-      // Remove any existing GPX layer.
-      if (gpxLayer) {
-        map.removeLayer(gpxLayer);
-      }
-      console.log(url);
-      gpxLayer = new L.GPX(url, {
-        async: true,
-        marker_options: {
-          startIconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-          endIconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png'
-        }
-      }).on('loaded', function(e) {
-        map.fitBounds(e.target.getBounds());
-      }).addTo(map);
-    }
-
     // Check for a GPX URL in the query string and load it on page load.
     const params = new URLSearchParams(window.location.search);
     if (params.has('gpx')) {
       const gpxUrl = params.get('gpx');
       // Basic validation of URL could be added here if desired.
-      loadGPXFromURL(gpxUrl);
+      loadGPX(gpxUrl);
     }
   </script>
 </body>
