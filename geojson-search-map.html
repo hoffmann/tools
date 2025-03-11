@@ -159,6 +159,9 @@
             const resultsContainer = document.getElementById('resultsContainer');
             const loadingElement = document.getElementById('loading');
             
+            // Set focus to the search input field on page load
+            searchInput.focus();
+            
             // Initialize map
             const map = L.map('map').setView([39.8283, -98.5795], 4); // Center of US
             
@@ -369,7 +372,7 @@
                 }
             });
 
-            // Handle Enter key press on search input
+            // Handle Enter and Escape key press on search input
             searchInput.addEventListener('keydown', (event) => {
                 if (event.key === 'Enter') {
                     const query = searchInput.value.trim();
