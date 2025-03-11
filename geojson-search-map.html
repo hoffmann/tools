@@ -385,6 +385,13 @@
                             zoomToFeature(firstFeature);
                         }
                     }
+                } else if (event.key === 'Escape') {
+                    // Clear the search input
+                    searchInput.value = '';
+                    // Reset the map view to the initial state
+                    map.setView([39.8283, -98.5795], 4);
+                    // Display all features
+                    displayResults(features);
                 }
             });
             
