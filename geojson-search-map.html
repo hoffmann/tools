@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GeoJSON Search with Leaflet Map</title>
     
-    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     
     <style>
@@ -85,18 +84,13 @@
             font-weight: bold;
             margin-bottom: 5px;
         }
-        
+        .feature-key{
+            color: #999;
+        } 
         .feature-details {
             font-size: 14px;
             color: #666;
         }
-        
-        .feature-coordinates {
-            font-size: 12px;
-            color: #999;
-            margin-top: 5px;
-        }
-        
         .no-results {
             padding: 20px;
             text-align: center;
@@ -111,7 +105,6 @@
         
         .highlight {
             background-color: #fff3cd;
-            padding: 0 2px;
         }
         
         .leaflet-popup-content {
@@ -146,10 +139,8 @@
         </div>
     </div>
 
-    <!-- Import Leaflet JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     
-    <!-- Import Lunr.js correctly -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lunr.js/2.3.9/lunr.min.js"></script>
     
     <script>
@@ -159,19 +150,15 @@
             const resultsContainer = document.getElementById('resultsContainer');
             const loadingElement = document.getElementById('loading');
             
-            // Set focus to the search input field on page load
             searchInput.focus();
             
-            // Initialize map
             const map = L.map('map').setView([39.8283, -98.5795], 4); // Center of US
             
-            // Add tile layer
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
                 maxZoom: 19
             }).addTo(map);
             
-            // Sample GeoJSON data - you would normally fetch this from a server
             const geojsonData = {
                 "type": "FeatureCollection",
                 "features": [
@@ -268,6 +255,14 @@
             // Extract features for indexing
             const features = geojsonData.features;
             
+            // Collect all unique property keys
+            const allFields = new Set();
+            features.forEach(feature => {
+                Object.keys(feature.properties).forEach(key => {
+                    allFields.add(key);
+                });
+            });
+            
             // Initialize lunr.js index with stemming disabled
             const idx = lunr(function() {
                 // Disable stemming by using the original token without stemming
@@ -275,20 +270,18 @@
                 this.searchPipeline.remove(lunr.stemmer);
                 
                 this.ref('id');
-                this.field('name');
-                this.field('type');
-                this.field('city');
-                this.field('description');
+                
+                // Add all collected fields to the index
+                allFields.forEach(field => {
+                    this.field(field);
+                });
                 
                 // Add each feature to the index
                 features.forEach(feature => {
                     const props = feature.properties;
                     this.add({
                         id: props.id,
-                        name: props.name,
-                        type: props.type,
-                        city: props.city,
-                        description: props.description || ''
+                        ...props
                     });
                 });
             });
@@ -321,20 +314,7 @@
                 
                 // Add click event to marker
                 marker.on('click', () => {
-                    // Find corresponding search result and scroll to it
-                    const resultItem = document.querySelector(`.feature-item[data-id="${props.id}"]`);
-                    if (resultItem) {
-                        // Remove active class from all items
-                        document.querySelectorAll('.feature-item').forEach(item => {
-                            item.classList.remove('active');
-                        });
-                        
-                        // Add active class to clicked item
-                        resultItem.classList.add('active');
-                        
-                        // Scroll to item
-                        resultItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
+                    highlightid(feature);
                 });
             });
             
@@ -392,7 +372,7 @@
                     // Clear the search input
                     searchInput.value = '';
                     // Reset the map view to the initial state
-                    map.setView([39.8283, -98.5795], 4);
+                    //map.setView([39.8283, -98.5795], 4);
                     // Display all features
                     displayResults(features);
                 }
@@ -412,10 +392,16 @@
                     const props = feature.properties;
                     
                     // Create details text from properties
-                    let details = `${props.type} in ${props.city}`;
-                    if (props.description) {
-                        details += ` - ${props.description}`;
-                    }
+                    let details = '';
+                    Object.keys(props).forEach(key => {
+                        if (key !== 'name' && key !== 'id') {
+                            let value = props[key];
+                            if (query){
+                                value = value.replace(new RegExp(`(${query})`, 'gi'), '<span class="highlight">$1</span>');
+                            }
+                            details += `<div class="feature-${key}"><span class="feature-key">${key}:</span> ${value}</div>`;
+                        }
+                    });
                     
                     // Highlight matching text if there's a search query
                     let nameDisplay = props.name;
@@ -423,14 +409,12 @@
                     
                     if (query) {
                         nameDisplay = highlightMatches(props.name, query);
-                        detailsDisplay = highlightMatches(details, query);
                     }
                     
                     html += `
                         <div class="feature-item" data-id="${props.id}">
                             <div class="feature-name">${nameDisplay}</div>
                             <div class="feature-details">${detailsDisplay}</div>
-                            <div class="feature-coordinates">Coordinates: [${feature.geometry.coordinates.join(', ')}]</div>
                         </div>
                     `;
                 });
@@ -440,33 +424,23 @@
                 // Add click event listeners to feature items
                 document.querySelectorAll('.feature-item').forEach(item => {
                     item.addEventListener('click', () => {
-                        const id = parseInt(item.getAttribute('data-id'));
+                        const id = item.getAttribute('data-id');
                         const feature = features.find(f => f.properties.id === id);
-                        
-                        // Get marker for this feature
-                        const marker = markers[id];
-                        
-                        if (marker) {
-                            // Zoom to marker
+                        if (feature) {
                             const coords = feature.geometry.coordinates;
                             map.setView([coords[1], coords[0]], 9);
-                            
-                            // Open popup
                             marker.openPopup();
                         }
                         
-                        // Remove active class from all items
                         document.querySelectorAll('.feature-item').forEach(i => {
                             i.classList.remove('active');
                         });
                         
-                        // Add active class to clicked item
                         item.classList.add('active');
                     });
                 });
             }
             
-            // Function to highlight matching text
             function highlightMatches(text, query) {
                 if (!query) return text;
                 
@@ -483,11 +457,23 @@
                        text.substring(endIndex);
             }
 
-            // Function to zoom to a feature
+            function highlightid(feature){
+                console.log(feature);
+                const resultItem = document.querySelector(`.feature-item[data-id="${feature.properties.id}"]`);
+                if (resultItem) {
+                    document.querySelectorAll('.feature-item').forEach(item => {
+                        item.classList.remove('active');
+                    });
+                    
+                    resultItem.classList.add('active');
+                    
+                    resultItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+
             function zoomToFeature(feature) {
-                // Implement the logic to zoom to the feature on the map
-                // Example:
-                map.setView([feature.geometry.coordinates[1], feature.geometry.coordinates[0]], 15);
+                highlightid(feature)
+                map.setView([feature.geometry.coordinates[1], feature.geometry.coordinates[0]], 7);
             }
         });
     </script>
