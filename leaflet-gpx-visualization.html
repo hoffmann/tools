@@ -166,7 +166,16 @@
         // Fit the map bounds to the GPX track.
         map.fitBounds(e.target.getBounds());
       }).addTo(map);
+      map.on('click', function(e){
+    var lt = String(e.latlng.lat),
+    lg = String(e.latlng.lng);
+    var popup = L.popup()
+      .setLatLng(e.latlng)
+      .setContent(lt + ", " + lg)
+      .openOn(map);
+  });
     }
+
 
     // Check for a GPX URL in the query string and load it on page load.
     const params = new URLSearchParams(window.location.search);
