@@ -240,7 +240,7 @@
                 if (map) {
                     map.remove();
                 }
-                map = L.map('map').setView([46.94809, 7.44744], 4); 
+                map = L.map('map').setView([46.94809, 7.44744], 4);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
                     maxZoom: 19
@@ -309,6 +309,7 @@
 
                     // Create marker and add to map
                     const marker = L.marker([coords[1], coords[0]]);
+                    marker.bindTooltip(props.name, { permanent: false, direction: 'top', offset: L.point(-14, -5) });
 
                     // Create popup content
                     const popupContent = `
