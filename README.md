@@ -13,3 +13,9 @@ drag/drop to visualize gpx files in leaflet:
 drag/drop to visualize geojson files in leaflet:
 
 [Leaflet GeoJson Visualization](./leaflet-geojson-visualization.html)
+
+## search for openstreetmap features on the map 
+
+search for openstreetmap features
+
+[Openstreetmap Feature Search](./leaflet-osm-mountain-features.html)

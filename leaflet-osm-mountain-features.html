@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mountain Features Map</title>
+    
+    <!-- Include Leaflet CSS and JS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    
+    <!-- Include Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+        
+        .control-container {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background-color: white;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            width: 300px;
+        }
+        
+        .search-container {
+            margin-bottom: 10px;
+        }
+        
+        #search-input {
+            width: 220px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-right: 5px;
+        }
+        
+        #search-button {
+            padding: 8px 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        #search-button:hover {
+            background-color: #45a049;
+        }
+        
+        #search-results {
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .result-item {
+            padding: 8px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .result-item:hover {
+            background-color: #f1f1f1;
+        }
+        
+        .feature-filter {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #ddd;
+        }
+        
+        .filter-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        
+        .filter-button {
+            padding: 8px 12px;
+            margin-right: 8px;
+            margin-bottom: 8px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .filter-button:hover {
+            background-color: #2980b9;
+        }
+        
+        .filter-button.active {
+            background-color: #2c3e50;
+        }
+        
+        .leaflet-popup-content {
+            max-width: 300px;
+        }
+        
+        .leaflet-popup-content a {
+            color: #0078A8;
+            text-decoration: none;
+        }
+        
+        .leaflet-popup-content a:hover {
+            text-decoration: underline;
+        }
+        
+        .marker-icon {
+            text-align: center;
+            background-color: white;
+            border-radius: 50%;
+            width: 26px !important;
+            height: 26px !important;
+            line-height: 26px !important;
+            box-shadow: 0 0 3px rgba(0,0,0,0.4);
+        }
+        
+        .hut-icon {
+            color: #7cb0dd;  /* Light blue to match OSM hut color */
+        }
+        
+        .peak-icon {
+            color: #8B4513;  /* Brown for peaks */
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 10px;
+            z-index: 1000;
+            background-color: white;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .legend-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            display: inline-block;
+            text-align: center;
+        }
+        
+        .status-message {
+            color: #666;
+            font-style: italic;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="control-container">
+        <div class="search-container">
+            <input type="text" id="search-input" placeholder="Search for a location...">
+            <button id="search-button">Search</button>
+            <div id="search-results"></div>
+        </div>
+        
+        <div class="feature-filter">
+            <div class="filter-title">Find Mountain Features:</div>
+            <button id="find-huts" class="filter-button">Mountain Huts</button>
+            <button id="find-peaks" class="filter-button">Mountain Peaks</button>
+            <button id="clear-features" class="filter-button">Clear Features</button>
+            <div id="status-message" class="status-message"></div>
+        </div>
+    </div>
+    
+    <div class="legend">
+        <div class="filter-title">Legend:</div>
+        <div class="legend-item">
+            <div class="legend-icon">
+                <i class="fa fa-home" style="color: #7cb0dd;"></i>
+            </div>
+            <span>Mountain Hut</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-icon">
+                <i class="fa fa-mountain" style="color: #8B4513;"></i>
+            </div>
+            <span>Mountain Peak</span>
+        </div>
+    </div>
+    
+    <script>
+        // Initialize the map centered on a mountainous region
+        const map = L.map('map').setView([46.6, 8.0], 8); // Default starting in the Alps
+        
+        // Add OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // DOM elements
+        const searchInput = document.getElementById('search-input');
+        const searchButton = document.getElementById('search-button');
+        const searchResults = document.getElementById('search-results');
+        const findHutsButton = document.getElementById('find-huts');
+        const findPeaksButton = document.getElementById('find-peaks');
+        const clearFeaturesButton = document.getElementById('clear-features');
+        const statusMessage = document.getElementById('status-message');
+        
+        // Feature layers
+        const hutsLayer = L.layerGroup().addTo(map);
+        const peaksLayer = L.layerGroup().addTo(map);
+        
+        // Custom Font Awesome icons
+        function createIcon(iconClass, colorClass) {
+            return L.divIcon({
+                html: `<i class="${iconClass} ${colorClass}"></i>`,
+                className: 'marker-icon',
+                iconSize: [26, 26],
+                iconAnchor: [13, 13],
+                popupAnchor: [0, -13]
+            });
+        }
+        
+        const hutIcon = createIcon('fa fa-home', 'hut-icon');
+        const peakIcon = createIcon('fa fa-mountain', 'peak-icon');
+        
+        // Function to parse URL parameters
+        function getUrlParams() {
+            const params = {};
+            const queryString = window.location.search.substring(1);
+            const pairs = queryString.split('&');
+            
+            for (let i = 0; i < pairs.length; i++) {
+                const pair = pairs[i].split('=');
+                params[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1] || '');
+            }
+            
+            return params;
+        }
+        
+        // Search functionality
+        function searchPlace(query, callback) {
+            query = query || searchInput.value.trim();
+            if (!query) return;
+            
+            // Clear previous results if showing in UI
+            if (!callback) {
+                searchResults.innerHTML = '';
+            }
+            
+            // Make request to Nominatim API
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length === 0) {
+                        if (!callback) {
+                            searchResults.innerHTML = '<div class="result-item">No results found</div>';
+                        }
+                        return;
+                    }
+                    
+                    // If this is from initial URL params, just use first result
+                    if (callback && typeof callback === 'function') {
+                        callback(data[0]);
+                        return;
+                    }
+                    
+                    // Display results in UI
+                    data.forEach(result => {
+                        const resultItem = document.createElement('div');
+                        resultItem.className = 'result-item';
+                        resultItem.textContent = result.display_name;
+                        
+                        // Add click event to zoom to the location
+                        resultItem.addEventListener('click', () => {
+                            const lat = parseFloat(result.lat);
+                            const lon = parseFloat(result.lon);
+                            
+                            // Zoom to location
+                            map.setView([lat, lon], 13);
+                            
+                            // Add a marker
+                            L.marker([lat, lon])
+                                .addTo(map)
+                                .bindPopup(`<b>${result.display_name}</b><br>
+                                            <a href="https://www.openstreetmap.org/${result.osm_type}/${result.osm_id}" target="_blank">
+                                            View on OpenStreetMap</a>`)
+                                .openPopup();
+                                
+                            // Clear the results
+                            searchResults.innerHTML = '';
+                        });
+                        
+                        searchResults.appendChild(resultItem);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching search results:', error);
+                    if (!callback) {
+                        searchResults.innerHTML = '<div class="result-item">Error fetching results</div>';
+                    }
+                });
+        }
+        
+        // Function to find mountain huts using Overpass API
+        function findMountainHuts() {
+            // Clear previous huts
+            hutsLayer.clearLayers();
+            
+            const bounds = map.getBounds();
+            const south = bounds.getSouth();
+            const west = bounds.getWest();
+            const north = bounds.getNorth();
+            const east = bounds.getEast();
+            
+            statusMessage.textContent = "Loading mountain huts...";
+            
+            // Overpass query for mountain huts
+            const overpassUrl = "https://overpass-api.de/api/interpreter";
+            const query = `
+                [out:json];
+                (
+                  node["tourism"="alpine_hut"](${south},${west},${north},${east});
+                  node["tourism"="wilderness_hut"](${south},${west},${north},${east});
+                  node["building"="cabin"](${south},${west},${north},${east});
+                  way["tourism"="alpine_hut"](${south},${west},${north},${east});
+                  way["tourism"="wilderness_hut"](${south},${west},${north},${east});
+                );
+                out center;
+            `;
+            
+            fetch(overpassUrl, {
+                method: "POST",
+                body: `data=${encodeURIComponent(query)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                let hutCount = 0;
+                
+                data.elements.forEach(element => {
+                    let lat, lon, id, type;
+                    
+                    if (element.type === "node") {
+                        lat = element.lat;
+                        lon = element.lon;
+                        id = element.id;
+                        type = "node";
+                    } else if (element.type === "way" && element.center) {
+                        lat = element.center.lat;
+                        lon = element.center.lon;
+                        id = element.id;
+                        type = "way";
+                    } else {
+                        return;
+                    }
+                    
+                    const name = element.tags?.name || "Mountain Hut";
+                    const ele = element.tags?.ele ? `Elevation: ${element.tags.ele}m<br>` : "";
+                    
+                    const marker = L.marker([lat, lon], {icon: hutIcon}).addTo(hutsLayer);
+                    marker.bindPopup(`
+                        <b>${name}</b><br>
+                        ${ele}
+                        Type: ${element.tags?.tourism || element.tags?.building || "Hut"}<br>
+                        <a href="https://www.openstreetmap.org/${type}/${id}" target="_blank">View on OpenStreetMap</a>
+                    `);
+                    
+                    hutCount++;
+                });
+                
+                statusMessage.textContent = `Found ${hutCount} mountain huts in this area.`;
+                
+                if (hutCount === 0) {
+                    statusMessage.textContent = "No mountain huts found in this area. Try zooming out or moving the map.";
+                }
+            })
+            .catch(error => {
+                console.error("Error fetching mountain huts:", error);
+                statusMessage.textContent = "Error loading mountain huts. Please try again.";
+            });
+        }
+        
+        // Function to find mountain peaks using Overpass API
+        function findMountainPeaks() {
+            // Clear previous peaks
+            peaksLayer.clearLayers();
+            
+            const bounds = map.getBounds();
+            const south = bounds.getSouth();
+            const west = bounds.getWest();
+            const north = bounds.getNorth();
+            const east = bounds.getEast();
+            
+            statusMessage.textContent = "Loading mountain peaks...";
+            
+            // Overpass query for mountain peaks
+            const overpassUrl = "https://overpass-api.de/api/interpreter";
+            const query = `
+                [out:json];
+                node["natural"="peak"](${south},${west},${north},${east});
+                out;
+            `;
+            
+            fetch(overpassUrl, {
+                method: "POST",
+                body: `data=${encodeURIComponent(query)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                let peakCount = 0;
+                
+                data.elements.forEach(element => {
+                    if (element.type !== "node") return;
+                    
+                    const name = element.tags?.name || "Mountain Peak";
+                    const ele = element.tags?.ele ? `Elevation: ${element.tags.ele}m<br>` : "";
+                    
+                    const marker = L.marker([element.lat, element.lon], {icon: peakIcon}).addTo(peaksLayer);
+                    marker.bindPopup(`
+                        <b>${name}</b><br>
+                        ${ele}
+                        <a href="https://www.openstreetmap.org/node/${element.id}" target="_blank">View on OpenStreetMap</a>
+                    `);
+                    
+                    peakCount++;
+                });
+                
+                statusMessage.textContent = `Found ${peakCount} mountain peaks in this area.`;
+                
+                if (peakCount === 0) {
+                    statusMessage.textContent = "No mountain peaks found in this area. Try zooming out or moving the map.";
+                }
+            })
+            .catch(error => {
+                console.error("Error fetching mountain peaks:", error);
+                statusMessage.textContent = "Error loading mountain peaks. Please try again.";
+            });
+        }
+        
+        // Clear all feature layers
+        function clearFeatures() {
+            hutsLayer.clearLayers();
+            peaksLayer.clearLayers();
+            statusMessage.textContent = "All features cleared.";
+        }
+        
+        // Map click event for general features
+        map.on('click', function(e) {
+            const lat = e.latlng.lat.toFixed(6);
+            const lng = e.latlng.lng.toFixed(6);
+            
+            // Get the closest OSM object using Nominatim reverse geocoding
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18`)
+                .then(response => response.json())
+                .then(data => {
+                    let osmType = data.osm_type || '';
+                    let osmId = data.osm_id || '';
+                    let displayName = data.displayname || data.display_name || 'Unknown location';
+                    
+                    let osmLink = '';
+                    if (osmType && osmId) {
+                        osmLink = `<a href="https://www.openstreetmap.org/${osmType}/${osmId}" target="_blank">View on OpenStreetMap</a>`;
+                    } else {
+                        osmLink = `<a href="https://www.openstreetmap.org/#map=18/${lat}/${lng}" target="_blank">View on OpenStreetMap</a>`;
+                    }
+                    
+                    // Create popup with location info and OSM link
+                    L.popup()
+                        .setLatLng(e.latlng)
+                        .setContent(`<b>${displayName}</b><br>
+                                    Coordinates: ${lat}, ${lng}<br>
+                                    ${osmLink}`)
+                        .openOn(map);
+                })
+                .catch(error => {
+                    console.error('Error in reverse geocoding:', error);
+                    
+                    // Fallback popup if reverse geocoding fails
+                    L.popup()
+                        .setLatLng(e.latlng)
+                        .setContent(`<b>Location</b><br>
+                                    Coordinates: ${lat}, ${lng}<br>
+                                    <a href="https://www.openstreetmap.org/#map=18/${lat}/${lng}" target="_blank">View on OpenStreetMap</a>`)
+                        .openOn(map);
+                });
+        });
+        
+        // Handle URL parameters on page load
+        function handleUrlParams() {
+            const params = getUrlParams();
+            
+            // Check for lat/lon parameters
+            if (params.lat && params.lon) {
+                const lat = parseFloat(params.lat);
+                const lon = parseFloat(params.lon);
+                const zoom = params.zoom ? parseInt(params.zoom) : 14;
+                
+                if (!isNaN(lat) && !isNaN(lon)) {
+                    map.setView([lat, lon], zoom);
+                    
+                    // Optionally add a marker at this position
+                    L.marker([lat, lon]).addTo(map)
+                        .bindPopup(`Coordinates: ${lat.toFixed(6)}, ${lon.toFixed(6)}`)
+                        .openPopup();
+                        
+                    statusMessage.textContent = "Map centered on provided coordinates.";
+                }
+            }
+            // Check for search query parameter
+            else if (params.q) {
+                const searchQuery = params.q;
+                searchInput.value = searchQuery;
+                
+                // Search and center on first result
+                searchPlace(searchQuery, (result) => {
+                    if (result) {
+                        const lat = parseFloat(result.lat);
+                        const lon = parseFloat(result.lon);
+                        const zoom = params.zoom ? parseInt(params.zoom) : 14;
+                        
+                        map.setView([lat, lon], zoom);
+                        
+                        // Add a marker
+                        L.marker([lat, lon])
+                            .addTo(map)
+                            .bindPopup(`<b>${result.display_name}</b><br>
+                                        <a href="https://www.openstreetmap.org/${result.osm_type}/${result.osm_id}" target="_blank">
+                                        View on OpenStreetMap</a>`)
+                            .openPopup();
+                            
+                        statusMessage.textContent = "Map centered on search result.";
+                    }
+                });
+            }
+        }
+        
+        // Event listeners
+        searchButton.addEventListener('click', () => searchPlace());
+        searchInput.addEventListener('keyup', (event) => {
+            if (event.key === 'Enter') {
+                searchPlace();
+            }
+        });
+        
+        findHutsButton.addEventListener('click', findMountainHuts);
+        findPeaksButton.addEventListener('click', findMountainPeaks);
+        clearFeaturesButton.addEventListener('click', clearFeatures);
+        
+        // Initialize with URL parameters
+        handleUrlParams();
+        
+        // Set default message if no URL parameters were processed
+        if (!statusMessage.textContent) {
+            statusMessage.textContent = "Zoom to an area and click 'Mountain Huts' or 'Mountain Peaks'";
+        }
+    </script>
+</body>
+</html>
