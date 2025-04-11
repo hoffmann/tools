@@ -18,4 +18,10 @@ drag/drop to visualize geojson files in leaflet:
 
 search for openstreetmap features
 
-[Openstreetmap Feature Search](./leaflet-osm-mountain-features.html)
+Supported Query Parameters for initial page load:
+```
+q=<searchstring>
+lat=<lat>&lon=<lon>
+```
+
+[Openstreetmap Feature Search](./leaflet-osm-mountain-features.html?q=Ortler)
