@@ -117,7 +117,8 @@
       if (files.length) {
         const file = files[0];
         if (file.name.toLowerCase().endsWith('.gpx')) {
-          loadGPX(file);
+          const fileURL = URL.createObjectURL(file);
+          loadGPX(fileURL);
         } else {
           alert('Please drop a valid GPX file.');
         }
