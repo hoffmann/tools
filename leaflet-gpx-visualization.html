@@ -78,12 +78,18 @@
       id: 'mapbox/outdoors-v11', 
       accessToken: 'pk.eyJ1IjoicGV0ZXJob2ZmbWFubiIsImEiOiJjbTZuZTMwYmQwcDNyMmxyNTh2Y2s3eDFmIn0.TogLeDQYyaf7ovW48nlQ4Q'
     }).addTo(map);
-    
+
+    // add opentopomap tile layer
+    var open_topo_map_layer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+      maxZoom: 17,
+      attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+    });    
 
     var baseMaps = {
     "OpenStreetMap": osm_layer,
     "Mapbox.Satellite": satellite_layer,
-    "Mapbox.Outdoor": mapbox_layer
+    "Mapbox.Outdoor": mapbox_layer,
+    "OpenTopoMap": open_topo_map_layer
     };
 
     var layerControl = L.control.layers(baseMaps).addTo(map);
