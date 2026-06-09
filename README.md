@@ -25,3 +25,10 @@ lat=<lat>&lon=<lon>
 ```
 
 [Openstreetmap Feature Search](./leaflet-osm-mountain-features.html?q=Ortler)
+
+
+## flashcards 
+
+Convert a markdown text into flashcards.
+
+[Flashcards](./flashcards.html)
